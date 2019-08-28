@@ -8,7 +8,7 @@ Demonstrate the scroll_to_index package from the Quire team - located at https:/
 - includes variable-height rows
 - StatelessWidgets only
 
-Current limitation is that programmatic scrolling can use absolute-row-numbers only. How to scroll back/forward in relative row counts?
+Current limitation is that programmatic scrolling can use absolute-row-numbers only. How to scroll back/forward in relative row counts, after the user has manually scrolled away from the position of the last call to scrollToIndex?
 
 Richard Shepherd
 2019
