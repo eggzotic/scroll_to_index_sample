@@ -10,11 +10,14 @@ class MyModel with ChangeNotifier {
   int _currentRow = 0;
   int get currentRow => _currentRow;
   //
-  void setCurrentRow(int newValue) {
+  // use notify = false - when setting the value after a user's finger-based scroll
+  // use notify = true (default) - in prep for a programatic controller.scrollToIndex
+  //
+  void setCurrentRow(int newValue, {bool notify = true}) {
     _currentRow = newValue;
     if (_currentRow > maxRows) _currentRow = maxRows - 1;
     if (_currentRow < minRows) _currentRow = minRows;
-    notifyListeners();
+    if (notify) notifyListeners();
     print('currentRow = $_currentRow');
   }
 

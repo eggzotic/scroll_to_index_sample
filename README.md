@@ -7,8 +7,11 @@ A new Flutter project.
 Demonstrate the scroll_to_index package from the Quire team - located at https://pub.dev/packages/scroll_to_index
 - includes variable-height rows
 - StatelessWidgets only
-
-Current limitation is that programmatic scrolling can use absolute-row-numbers only. How to scroll back/forward in relative row counts, after the user has manually scrolled away from the position of the last call to scrollToIndex?
+- scrolling can be performed:
+  - programmatically via AutoScrollController.scrollToIndex
+  - manually via the user's finger, and the model will be updated with the currently visible-at-the-top row
+    - so "scroll back/forward by X rows" works any time", however the geometry reported by ScrollEndNotification.context
+      is not always accurate and can result in inaccuracy by +/- 1. Presumably this is some kind of timing/async issue?
 
 Richard Shepherd
 2019
