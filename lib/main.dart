@@ -1,10 +1,8 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 //
-import 'my_model.dart';
+import 'scroll_index_controller.dart';
 
 //
 // Richard Shepherd, 2019
@@ -12,14 +10,13 @@ import 'my_model.dart';
 // Sample app to demonstrate the function of scroll_to_index package
 // - includes variable-height rows
 // - StatelessWidgets only
+// - is aware of the current scroll position (by item-index!) even after manual scrolling
+// this approach is good for up to maybe ~500 items
+//   - may not scale up into the 1000's and beyond
+//   - but still this covers a lot of potential app-reqs
 //
 
-void main() => runApp(
-      ChangeNotifierProvider(
-        builder: (context) => MyModel(),
-        child: MyApp(),
-      ),
-    );
+void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
   @override
@@ -29,8 +26,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: ListenableProvider(
-        builder: (context) => AutoScrollController(),
+      home: Provider(
+        builder: (context) => ScrollIndexController(itemCount: 300),
         child: StatelessHomePage(title: 'Scroll To Row'),
       ),
     );
@@ -60,7 +57,7 @@ class StatelessHomePage extends StatelessWidget {
                 'This is row $index',
                 style: Theme.of(context).textTheme.title,
               ),
-              ..._stringContents(index % 5).map((string) => Text(string)).toList(),
+              ..._linesOfText(index % 38).map((string) => Text(string)).toList(),
             ],
           ),
         ),
@@ -69,7 +66,7 @@ class StatelessHomePage extends StatelessWidget {
   }
 
   // generate a list of strings, to be used as "lines", to give us varying sizes for the rows
-  List<String> _stringContents(int lines) => List.generate(lines, (index) => "This is line number $index");
+  List<String> _linesOfText(int lines) => List.generate(lines, (index) => "This is line number $index");
 
   Widget _wrapScrollTag({
     int index,
@@ -77,92 +74,84 @@ class StatelessHomePage extends StatelessWidget {
     @required AutoScrollController controller,
   }) =>
       AutoScrollTag(
-        // use GlobalKey so we can later access the currentContext and the RenderObject to locate it on the screen
+        // use GlobalKey, for later access to its currentContext and RenderObject to
+        //  locate it on the screen in the ListView coords
         key: GlobalKey(),
         controller: controller,
         index: index,
         child: child,
-        highlightColor: Colors.black.withOpacity(0.1),
       );
   //
   @override
   Widget build(BuildContext context) {
-    final myModel = Provider.of<MyModel>(context);
-    final controller = Provider.of<AutoScrollController>(context);
+    final indexController = Provider.of<ScrollIndexController>(context);
     //
-    // create the ListView children ahead of time since we need to access these
-    //  both as the ListView children and when scanning to find which item is now at the top afte scrolling
+    // create these items ahead of time so we can
+    // 1. pass these to the ListView as children and
+    // 2. scan to find which item is now at the top after scrolling
     //
-    final List<Widget> rowItems = List.generate(
-      myModel.maxRows,
-      (index) => _getRow(index, controller: controller, context: context),
+    final List<Widget> items = List.generate(
+      indexController.itemCount,
+      (index) => _getRow(
+        index,
+        controller: indexController.controller,
+        context: context,
+      ),
     );
     //
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
         actions: <Widget>[
+          //
+          // some buttons to perform scroll back/forward by some arbitrary number of items
+          //  remember to scroll up/down with you finger also to validate that subsequent
+          //  use of these buttons takes into account the currently visible items
           InkWell(
             child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text('-13', style: TextStyle(color: Colors.white)),
+              padding: const EdgeInsets.all(8.0),
+              child: Text('-7', style: TextStyle(color: Colors.white)),
             ),
-            onTap: () async {
-              myModel.decCurrentRow(13);
-              await controller.scrollToIndex(myModel.currentRow, preferPosition: AutoScrollPosition.begin);
-            },
+            onTap: () => indexController.scrollBackBy(items: 7),
           ),
           InkWell(
             child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text('+27', style: TextStyle(color: Colors.white)),
+              padding: const EdgeInsets.all(8.0),
+              child: Text('-1', style: TextStyle(color: Colors.white)),
             ),
-            onTap: () async {
-              myModel.incCurrentRow(27);
-              await controller.scrollToIndex(myModel.currentRow, preferPosition: AutoScrollPosition.begin);
-            },
+            onTap: () => indexController.scrollBackBy(items: 1),
+          ),
+          InkWell(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('+1', style: TextStyle(color: Colors.white)),
+            ),
+            onTap: () => indexController.scrollForwardBy(items: 1),
+          ),
+          InkWell(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('+9', style: TextStyle(color: Colors.white)),
+            ),
+            onTap: () => indexController.scrollForwardBy(items: 9),
           ),
         ],
       ),
       body: NotificationListener(
         child: ListView(
-          controller: controller,
-          children: rowItems,
+          controller: indexController.controller,
+          children: items,
         ),
         onNotification: (ScrollNotification notification) {
-          if (notification is ScrollEndNotification) {
-            final listViewBox = notification.context?.findRenderObject() as RenderBox;
-            final listViewBot = listViewBox.size.height;
-
-            // padding for cases like where we use a Card which adds some visual whitespace between consecutive Cards
-            //  even though the RenderBox of each is adjacent according to the coordinates from localToGlobal
-            final double padding = 4.0;
-            //
-            for (int index = 0; index < rowItems.length; index++) {
-              final itemBox = (rowItems[index].key as GlobalKey).currentContext?.findRenderObject() as RenderBox;
-              if (itemBox != null) {
-                final itemPosition = itemBox.localToGlobal(Offset(0, 0), ancestor: listViewBox);
-                final itemTop = itemPosition.dy + padding;
-                final itemBot = itemPosition.dy + itemBox.size.height - padding;
-                if ((itemTop >= 0 && itemTop < listViewBot) || (itemBot >= 0 && itemBot <= listViewBot)) {
-                  myModel.setCurrentRow(index, notify: false);
-                  break;
-                }
-              }
-            }
-          }
-          return false; // false --> keep passing the notification up the tree
+          if (!(notification is ScrollEndNotification)) return false;
+          //
+          final firstVisibleIndex = items.indexWhere((item) => indexController.itemIsVisible(item: item));
+          indexController.setCurrent(index: firstVisibleIndex, scroll: false);
+          // false --> keep passing the notification up the tree, in case you
+          //   have other widgets wanting to respond to this
+          return false;
         },
       ),
-      // cannot do ListView.builder - must use plain ListView(...) with explicit children,
-      //  for the controller.scrollToIndex to work
-      //
-      // body: ListView.builder(
-      //   itemCount: myModel.maxRows,
-      //   itemBuilder: (context, index) {
-      //     return _getRow(index, controller: controller, context: context);
-      //   },
-      // ),
     );
   }
 }
