@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 //
 import 'indexed_scroll_controller.dart';
+import 'my_data_source.dart';
 
 //
 class VerticalListView extends StatelessWidget {
@@ -15,41 +16,21 @@ class VerticalListView extends StatelessWidget {
   Widget _verticalListRowContent(
     int data, {
     TextStyle textStyle,
-    void Function(Key) deleteAction,
   }) {
-    final itemKey = ValueKey('Row $data');
-    return Dismissible(
-      key: itemKey,
-      child: Card(
-        color: Colors.blue[100],
-        child: ListTile(
-          title: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'This is row $data',
-                style: textStyle,
-              ),
-              // 38: an arbitrary number to help produce some large rows (taller than a full-screen)
-              ..._linesOfText(data % 38).map((string) => Text(string)).toList(),
-            ],
-          ),
+    return Card(
+      color: Colors.blue[100],
+      child: ListTile(
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'This is row $data',
+              style: textStyle,
+            ),
+            // 38: an arbitrary large-enough number to produce some large rows (taller than a full-screen)
+            ..._linesOfText(data % 38).map((string) => Text(string)).toList(),
+          ],
         ),
-      ),
-      onDismissed: (direction) {
-        myData.remove(data);
-        if (deleteAction != null) deleteAction(itemKey);
-      },
-      background: Container(
-        color: Colors.red,
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Text(
-            'Delete',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-        alignment: Alignment.centerRight,
       ),
     );
   }
@@ -61,13 +42,31 @@ class VerticalListView extends StatelessWidget {
   Widget build(BuildContext context) {
     print('VerticalListView re-build');
     final indexedController = Provider.of<IndexedScrollController>(context);
+    final myDataSource = Provider.of<MyDataSource>(context);
     //
     // the Widget representation of your data
-    final listItems = myData.map((data) {
-      return _verticalListRowContent(
-        data,
-        textStyle: Theme.of(context).textTheme.title,
-        deleteAction: (key) => indexedController.removeItemByKey(key: key),
+    final listItems = myDataSource.data.map((data) {
+      return Dismissible(
+        key: ValueKey('Row $data'),
+        child: _verticalListRowContent(
+          data,
+          textStyle: Theme.of(context).textTheme.title,
+        ),
+        onDismissed: (direction) {
+          myDataSource.removeValue(data);
+        },
+        direction: DismissDirection.endToStart,
+        background: Container(
+          color: Colors.red,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          alignment: Alignment.centerRight,
+        ),
       );
     }).toList();
     //
@@ -109,7 +108,3 @@ class VerticalListView extends StatelessWidget {
     );
   }
 }
-
-//
-// dummy data-source
-final myData = List.generate(150, (i) => i);

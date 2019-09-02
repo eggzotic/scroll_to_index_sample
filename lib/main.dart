@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:scroll_to_index_sample/my_data_source.dart';
 //
 import 'horizontal_list_view.dart';
 import 'vertical_list_view.dart';
@@ -71,20 +72,33 @@ class HomePage extends StatelessWidget {
         children: <Widget>[
           Expanded(
             flex: 1,
-            child: ChangeNotifierProvider(
-              builder: (context) => IndexedScrollController(
-                  currentIndexCallBack: currentIndices.setHorizontal,
+            child: MultiProvider(
+              providers: [
+                Provider(
+                  builder: (context) => IndexedScrollController(
+                    statusCallBack: ({int currentIndex}) => currentIndices.setHorizontal(currentIndex),
                   ),
-              child: HorizontalListView(
-              ),
+                ),
+                ChangeNotifierProvider(
+                  builder: (context) => MyDataSource(inintialDataSize: 78),
+                )
+              ],
+              child: HorizontalListView(),
             ),
           ),
           Expanded(
             flex: 2,
-            child: ChangeNotifierProvider(
-              builder: (context) => IndexedScrollController(
-                  currentIndexCallBack: currentIndices.setVertical,
+            child: MultiProvider(
+              providers: [
+                Provider(
+                  builder: (context) => IndexedScrollController(
+                    statusCallBack: ({int currentIndex}) => currentIndices.setVertical(currentIndex),
                   ),
+                ),
+                ChangeNotifierProvider(
+                  builder: (context) => MyDataSource(inintialDataSize: 65),
+                )
+              ],
               child: VerticalListView(),
             ),
           ),
@@ -103,7 +117,7 @@ class CurrentIndices with ChangeNotifier {
   int _vertical;
   int get vertical => _vertical ?? 0;
   //
-  void setHorizontal(int value) {
+  void setHorizontal( int value) {
     _horizontal = value;
     notifyListeners();
   }

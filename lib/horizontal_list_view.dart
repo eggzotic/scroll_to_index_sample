@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 //
 import 'indexed_scroll_controller.dart';
+import 'my_data_source.dart';
 
 //
 class HorizontalListView extends StatelessWidget {
@@ -42,13 +43,31 @@ class HorizontalListView extends StatelessWidget {
   Widget build(BuildContext context) {
     print('HorizontalListView re-build');
     final indexedController = Provider.of<IndexedScrollController>(context);
+    final myDataSource = Provider.of<MyDataSource>(context);
     //
     // the Widget form of your data
-    final listItems = myData.map((data) {
-      return _horizontalListRowContent(
-        data,
-        textStyle: Theme.of(context).textTheme.title.copyWith(color: Colors.white),
-      );
+    final listItems = myDataSource.data.map((data) {
+      return Dismissible(
+        key: ValueKey('Column $data'),
+        child: _horizontalListRowContent(
+          data,
+          textStyle: Theme.of(context).textTheme.title.copyWith(color: Colors.white),
+        ),
+        onDismissed: (direction) {
+          myDataSource.removeValue(data);
+        },
+        direction: DismissDirection.down,
+        background: Container(
+          color: Colors.red,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          alignment: Alignment.topCenter,
+        ),      );
     }).toList();
     //
     // pass it to your IndexedScrollController
@@ -89,6 +108,3 @@ class HorizontalListView extends StatelessWidget {
     );
   }
 }
-//
-// dummy data-source
-final myData = List.generate(100, (i) => i);
