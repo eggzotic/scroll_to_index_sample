@@ -7,13 +7,14 @@ import 'package:scroll_to_index/scroll_to_index.dart';
 // Provide item-index-tracking & control for a ListView
 //  using AutoScrollController for the scroll-control part
 //
-class IndexedScrollController {
+class IndexedScrollController with ChangeNotifier {
   //
   IndexedScrollController({
     List<Widget> items,
     this.preferredPosition = AutoScrollPosition.begin,
     this.initialIndex = 0,
     this.currentIndexCallBack,
+    this.notifyCurrentIndex = false,
   }) {
     if (items != null) _setCurrent(index: initialIndex);
     _wrappedItems = items?.map((item) => _wrapScrollTag(child: item, index: items.indexOf(item)))?.toList();
@@ -32,8 +33,8 @@ class IndexedScrollController {
       //
       _controller.position.isScrollingNotifier.addListener(() {
         if (_controller.position.isScrollingNotifier.value) return;
+        // so scrolling has just stopped - time to update the 1st-on-screen index
         findFirstOnScreenIndex();
-        if (currentIndexCallBack != null) currentIndexCallBack(_currentIndex);
       });
       _positionListenerSet = true;
     });
@@ -41,8 +42,16 @@ class IndexedScrollController {
 
   bool _positionListenerSet = false;
   //
+  // set this depending on whether you want to be updated whenever _currentIndex is changed
+  //  this will not normally be useful, as the consumer of this class will usually be a ListView
+  //  and it's more likely that the ListView parent (e.g. Scaffold, AppBar) will be interested in these
+  //  updates - which can be propagated via the currentIndexCallBack below
+  //
+  bool notifyCurrentIndex;
+  //
   // this callback allows the value of _currentIndex to be propagated up the tree, even higher than
   //  where this IndexedScrollController may have been instantiated
+  // Not necessary when only accessing the current-index within the scope of the Provider, as the notifyListeners() will ensure that update is propagated.
   //
   final void Function(int) currentIndexCallBack;
 
@@ -51,7 +60,7 @@ class IndexedScrollController {
   List<Widget> get items => _wrappedItems;
   //
   final int initialIndex;
-  int get itemCount => items?.length ?? 0;
+  int get itemCount => _wrappedItems?.length ?? 0;
   AutoScrollPosition preferredPosition;
   //
   final int _minIndex = 0;
@@ -85,11 +94,15 @@ class IndexedScrollController {
   // scroll = true (default) -> when you want the scrollToIndex to fire
   //
   void _setCurrent({@required int index, bool scroll = true}) {
+    // avoid unnecessary updates
+    if (index == _currentIndex) return;
     _currentIndex = index;
     // out-of-bounds corrections
     if (_currentIndex > itemCount) _currentIndex = itemCount - 1;
     if (_currentIndex < _minIndex) _currentIndex = _minIndex;
     // print('_currentIndex = ' + _currentIndex.toString());
+    if (notifyCurrentIndex) notifyListeners();
+    if (currentIndexCallBack != null) currentIndexCallBack(_currentIndex);
     if (!scroll) return;
     _controller.scrollToIndex(_currentIndex, preferPosition: preferredPosition);
   }
@@ -138,5 +151,27 @@ class IndexedScrollController {
     return (itemBegin >= 0 && itemBegin < containerEnd) ||
         (itemEnd >= 0 && itemEnd <= containerEnd) ||
         (itemBegin < 0 && itemEnd >= containerEnd);
+  }
+
+  //
+  // check if this is *really* the function you want - and see below for using Key as the identifier instead
+  Widget removeItemAt({@required int index}) {
+    //
+    // bounds checking
+    if (index < 0 || index >= itemCount) return null;
+    //
+    final removedItem = _wrappedItems.removeAt(index);
+    notifyListeners();
+    return removedItem;
+  }
+
+  //
+  // this is most likely the function you should be using for item-removal
+  Widget removeItemByKey({@required Key key}) {
+    final removedItem = _wrappedItems.firstWhere((item) => (item as AutoScrollTag).child.key == key, orElse: () => null);
+    if (removedItem == null) return null;
+    _wrappedItems.remove(removedItem);
+    notifyListeners();
+    return removedItem;
   }
 }

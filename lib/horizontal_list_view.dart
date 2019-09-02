@@ -40,17 +40,20 @@ class HorizontalListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('HorizontalListView re-build');
     final indexedController = Provider.of<IndexedScrollController>(context);
     //
-    indexedController.setItems(
-      List.generate(
-        100,
-        (index) => _horizontalListRowContent(
-          index,
-          textStyle: Theme.of(context).textTheme.title.copyWith(color: Colors.white),
-        ),
-      ),
-    );
+    // the Widget form of your data
+    final listItems = myData.map((data) {
+      return _horizontalListRowContent(
+        data,
+        textStyle: Theme.of(context).textTheme.title.copyWith(color: Colors.white),
+      );
+    }).toList();
+    //
+    // pass it to your IndexedScrollController
+    indexedController.setItems(listItems);
+    //
     return Column(
       children: <Widget>[
         Row(
@@ -61,12 +64,12 @@ class HorizontalListView extends StatelessWidget {
               onPressed: () => indexedController.scrollToBeginning(),
             ),
             RaisedButton(
-              child: Padding(padding: const EdgeInsets.all(8.0), child: Text('-7')),
-              onPressed: () => indexedController.scrollBackBy(items: 7),
+              child: Padding(padding: const EdgeInsets.all(8.0), child: Text('-9')),
+              onPressed: () => indexedController.scrollBackBy(items: 9),
             ),
             RaisedButton(
-              child: Padding(padding: const EdgeInsets.all(8.0), child: Text('+3')),
-              onPressed: () => indexedController.scrollForwardBy(items: 3),
+              child: Padding(padding: const EdgeInsets.all(8.0), child: Text('+6')),
+              onPressed: () => indexedController.scrollForwardBy(items: 6),
             ),
             RaisedButton(
               child: Padding(padding: const EdgeInsets.all(8.0), child: Text('End')),
@@ -77,6 +80,7 @@ class HorizontalListView extends StatelessWidget {
         Expanded(
           child: ListView(
             scrollDirection: Axis.horizontal,
+            // use the IndexedScrollController to provide the ScrollController and items
             controller: indexedController.controller,
             children: indexedController.items,
           ),
@@ -85,3 +89,6 @@ class HorizontalListView extends StatelessWidget {
     );
   }
 }
+//
+// dummy data-source
+final myData = List.generate(100, (i) => i);

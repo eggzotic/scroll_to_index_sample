@@ -8,14 +8,14 @@ import 'indexed_scroll_controller.dart';
 //
 // Richard Shepherd, 2019
 //
-// Sample app to demonstrate the function of my IndexedScrollController, which
+// Sample app to demonstrate the function of IndexedScrollController, which
 //  leverages scroll_to_index package
 // - includes variable-height rows
 // - StatelessWidgets only
 // - is aware of the current scroll position (by item-index!) even after manual scrolling
-// this approach is good for up to maybe ~500 items
+// this approach is good for up to maybe ~500 items (depending on item-widget size)
 //   - may not scale up into the 1000's and beyond
-//   - but still this covers a lot of potential app-reqs
+//   - but still, that covers a lot of potential app-reqs
 //
 
 void main() => runApp(MyApp());
@@ -43,7 +43,8 @@ class HomePage extends StatelessWidget {
   //
   @override
   Widget build(BuildContext context) {
-    print('HomePage re-build ');
+    final currentIndices = Provider.of<CurrentIndices>(context, listen: false);
+    // print('HomePage re-build');
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
@@ -70,19 +71,20 @@ class HomePage extends StatelessWidget {
         children: <Widget>[
           Expanded(
             flex: 1,
-            child: Provider(
+            child: ChangeNotifierProvider(
               builder: (context) => IndexedScrollController(
-                currentIndexCallBack: Provider.of<CurrentIndices>(context, listen: false).setHorizontal,
+                  currentIndexCallBack: currentIndices.setHorizontal,
+                  ),
+              child: HorizontalListView(
               ),
-              child: HorizontalListView(),
             ),
           ),
           Expanded(
             flex: 2,
-            child: Provider(
+            child: ChangeNotifierProvider(
               builder: (context) => IndexedScrollController(
-                currentIndexCallBack: Provider.of<CurrentIndices>(context, listen: false).setVertical,
-              ),
+                  currentIndexCallBack: currentIndices.setVertical,
+                  ),
               child: VerticalListView(),
             ),
           ),
@@ -94,6 +96,7 @@ class HomePage extends StatelessWidget {
 
 // helper class to hold some scroll-state received from the IndexedScrollController
 class CurrentIndices with ChangeNotifier {
+  //
   int _horizontal;
   int get horizontal => _horizontal ?? 0;
   //

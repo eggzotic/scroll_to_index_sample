@@ -11,20 +11,45 @@ class VerticalListView extends StatelessWidget {
     Key key,
   }) : super(key: key);
   //
-  Widget _verticalListRowContent(int index, {TextStyle textStyle}) {
-    return Card(
-      color: Colors.blue[100],
-      child: ListTile(
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'This is row $index',
-              style: textStyle,
-            ),
-            ..._linesOfText(index % 38).map((string) => Text(string)).toList(),
-          ],
+  // sample row-widget producer
+  Widget _verticalListRowContent(
+    int data, {
+    TextStyle textStyle,
+    void Function(Key) deleteAction,
+  }) {
+    final itemKey = ValueKey('Row $data');
+    return Dismissible(
+      key: itemKey,
+      child: Card(
+        color: Colors.blue[100],
+        child: ListTile(
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'This is row $data',
+                style: textStyle,
+              ),
+              // 38: an arbitrary number to help produce some large rows (taller than a full-screen)
+              ..._linesOfText(data % 38).map((string) => Text(string)).toList(),
+            ],
+          ),
         ),
+      ),
+      onDismissed: (direction) {
+        myData.remove(data);
+        if (deleteAction != null) deleteAction(itemKey);
+      },
+      background: Container(
+        color: Colors.red,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Text(
+            'Delete',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+        alignment: Alignment.centerRight,
       ),
     );
   }
@@ -34,17 +59,21 @@ class VerticalListView extends StatelessWidget {
   //
   @override
   Widget build(BuildContext context) {
+    print('VerticalListView re-build');
     final indexedController = Provider.of<IndexedScrollController>(context);
     //
-    indexedController.setItems(
-      List.generate(
-        100,
-        (index) => _verticalListRowContent(
-          index,
-          textStyle: Theme.of(context).textTheme.title,
-        ),
-      ),
-    );
+    // the Widget representation of your data
+    final listItems = myData.map((data) {
+      return _verticalListRowContent(
+        data,
+        textStyle: Theme.of(context).textTheme.title,
+        deleteAction: (key) => indexedController.removeItemByKey(key: key),
+      );
+    }).toList();
+    //
+    // pass your Widget Items to the IndexedScrollController
+    indexedController.setItems(listItems);
+    //
     return Column(
       children: <Widget>[
         Row(
@@ -71,6 +100,7 @@ class VerticalListView extends StatelessWidget {
         Expanded(
           child: ListView(
             scrollDirection: Axis.vertical,
+            // use the IndexedScrollController to provide the ScrollController and items
             controller: indexedController.controller,
             children: indexedController.items,
           ),
@@ -79,3 +109,7 @@ class VerticalListView extends StatelessWidget {
     );
   }
 }
+
+//
+// dummy data-source
+final myData = List.generate(150, (i) => i);

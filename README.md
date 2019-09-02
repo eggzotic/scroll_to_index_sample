@@ -30,6 +30,8 @@ Scrolling can be performed:
 - manually via the user's finger, and the model will always track the currently visible-at-the-beginning row
   - so "scroll back/forward by X rows" works any time
 
+The item-list can be edited also. e.g. see the sample app, VerticalListView Widget, for how to support deleting items. Note there that we need to update the data-source (your model code), *and* call IndexedScrollControler.removeItemByKey (or removeItemAt) to keep them in sync
+
 
 Richard Shepherd
 2019
